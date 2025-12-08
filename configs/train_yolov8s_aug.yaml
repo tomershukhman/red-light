@@ -1,0 +1,39 @@
+# Training configuration: YOLOv8s with targeted augmentations
+# Safe to tweak per experiment; values chosen to help small/rare classes.
+
+experiment_name: my_experiment_yolov8s_aug
+model: yolov8s.pt
+data_yaml: ../data/data.yaml
+
+experiment:
+  output_dir: experiments
+
+training:
+  epochs: 100
+  batch_size: 16
+  imgsz: 960 # boost resolution for small lights/stop lines
+  device: auto # auto: CUDA -> MPS -> CPU
+  seed: 42
+  # Uncomment to limit training time if needed
+  # patience: 15
+
+augmentation:
+  hsv_h: 0.02 # hue jitter helps traffic lights
+  hsv_s: 0.8
+  hsv_v: 0.8
+  degrees: 5.0
+  scale: 0.5
+  translate: 0.1
+  shear: 0.0
+  perspective: 0.0
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 1.0
+  mixup: 0.15 # minority classes
+  copy_paste: 0.15 # minority/small objects
+
+# Optional hyperparameters (kept default unless overridden)
+# hyperparameters:
+#   lr0: 0.01
+#   optimizer: SGD
+

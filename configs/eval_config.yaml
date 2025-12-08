@@ -1,0 +1,67 @@
+# Evaluation Configuration
+# All evaluation parameters - no hardcoded values in code
+
+evaluation:
+  # Confidence threshold for detections
+  conf_threshold: 0.001
+
+  # IoU threshold for NMS
+  iou_threshold: 0.6
+
+  # Maximum detections per image
+  max_detections: 300
+
+  # Save predictions in JSON format
+  save_json: true
+
+  # Save hybrid labels
+  save_hybrid: false
+
+  # Verbose output during evaluation
+  verbose: true
+
+# Region-of-Interest (ROI) evaluation for stop-line band (optional)
+roi:
+  enabled: true # set true to compute ROI metrics
+  type: horizontal_band # currently supported: horizontal_band
+  y_min: 0.55 # normalized (0=top,1=bottom)
+  y_max: 1.0
+  classes: # classes to score inside ROI
+    - car
+    - truck
+    - bus
+    - bike
+    - motobike
+    - stop_line
+  iou_threshold: 0.5 # IoU for ROI matching
+
+# Visualization settings
+visualization:
+  # Output image DPI
+  dpi: 300
+
+  # Output format (png, jpg, pdf, svg)
+  format: png
+
+  # Colormap for heatmaps
+  heatmap_cmap: RdYlGn
+
+  # Performance threshold for "needs attention" warnings
+  low_performance_threshold: 0.5
+
+  # Bar chart settings
+  bar_chart:
+    figsize: [12, 6]
+    bar_width: 0.35
+    colors:
+      ap50: "#3498db"
+      ap50_95: "#e74c3c"
+    grid_alpha: 0.3
+    y_limit: [0, 1]
+
+  # Heatmap settings
+  heatmap:
+    figsize: [10, 6]
+    annot_format: ".3f"
+    vmin: 0
+    vmax: 1

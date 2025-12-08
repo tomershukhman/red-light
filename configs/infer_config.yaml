@@ -1,0 +1,55 @@
+# Inference Configuration
+# All inference parameters - no hardcoded values in code
+
+inference:
+  # Default confidence threshold
+  default_conf_threshold: 0.25
+
+  # Default output directory
+  default_output_dir: inference_results
+
+  # Supported image extensions
+  image_extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .bmp
+
+  # Default data YAML path
+  default_data_yaml: data/data.yaml
+
+# Visualization settings
+visualization:
+  # Bounding box line thickness
+  bbox_thickness: 2
+
+  # Label font (OpenCV constant name)
+  label_font: FONT_HERSHEY_SIMPLEX
+
+  # Label font scale
+  label_font_scale: 0.5
+
+  # Label font thickness
+  label_font_thickness: 2
+
+  # Label background offset (pixels above bbox)
+  label_bg_offset: 10
+
+  # Label text offset (pixels from top)
+  label_text_offset: 5
+
+  # Label text color [B, G, R]
+  label_text_color: [0, 0, 0]
+
+  # Class-specific bounding box colors [B, G, R]
+  class_colors:
+    red_light: [0, 0, 255]
+    green_light: [0, 255, 0]
+    yellow_light: [0, 255, 255]
+    stop_line: [255, 255, 0]
+    car: [255, 0, 255]
+    truck: [128, 0, 255]
+    bus: [255, 128, 0]
+    bike: [255, 128, 128]
+    motobike: [128, 255, 128]
+    default: [255, 255, 255]

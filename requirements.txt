@@ -1,0 +1,19 @@
+# Data exploration
+jupyter
+numpy
+opencv-python
+matplotlib
+pyyaml
+pandas
+seaborn
+
+# Training and model
+ultralytics
+torch
+torchvision
+tqdm
+tensorboard
+
+# Optional: Experiment tracking (uncomment if needed)
+# mlflow
+# wandb
