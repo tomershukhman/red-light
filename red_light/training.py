@@ -62,6 +62,11 @@ class RedLightDetectionTrainer:
         # No custom callback needed - YOLO handles it all!
 
         train_args = self._build_training_args(resolved_device)
+        
+        # Configure WandB tracking (sets environment variables for YOLO's integration)
+        if self.tracker.enabled:
+            self.tracker.get_yolo_wandb_config()
+        
         self.tracker.start(resolved_device, train_args, self.config)
 
         print("\nTraining arguments:")

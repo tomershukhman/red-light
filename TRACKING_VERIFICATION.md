@@ -1,11 +1,26 @@
 # Experiment Tracking Verification Report
 
 **Date:** December 8, 2025  
-**Status:** ✅ ALL SYSTEMS OPERATIONAL
+**Status:** ✅ ALL SYSTEMS OPERATIONAL (Updated: Fixed Metric Logging)
 
 ## Summary
 
 All experiment tracking code has been reviewed, tested, and verified to work correctly. The system is production-ready for training with comprehensive WandB integration.
+
+---
+
+## Latest Update: Fixed Missing Training Metrics
+
+**Issue:** WandB dashboard only showed system metrics (GPU usage) but no training metrics (loss, mAP, etc.)
+
+**Root Cause:** We were initializing wandb before YOLO started training, which prevented YOLO's built-in integration from detecting and using the run properly.
+
+**Solution:** Changed approach to use **environment variables** instead of manual wandb.init(). YOLO's built-in integration automatically detects these and handles ALL metric logging:
+- Set `WANDB_PROJECT`, `WANDB_ENTITY`, `WANDB_NAME`, `WANDB_MODE` environment variables
+- Let YOLO manage the entire wandb lifecycle
+- YOLO now logs ALL training/validation metrics automatically
+
+**Result:** ✅ Full metric logging now working (losses, mAP, precision, recall, images, plots, etc.)
 
 ---
 

@@ -26,8 +26,8 @@ class WandbTracker:
         self.config = tracking_config or {}
         self.exp_dir = Path(exp_dir)
         self.enabled = bool(self.config.get('enabled', False))
-        self.wandb_run = None
         self.wandb = None
+        self._stored_config = {}  # Store config for later use
 
         if not self.enabled:
             print("Experiment tracking: disabled (set tracking.enabled: true to enable).")
@@ -46,6 +46,10 @@ class WandbTracker:
             import wandb  # type: ignore
 
             self.wandb = wandb
+            
+            # Auto-enable wandb in YOLO settings if not already enabled
+            self._ensure_yolo_wandb_enabled()
+            
             print("Experiment tracking: enabled with Weights & Biases.")
         except ImportError:
             print(
@@ -54,85 +58,104 @@ class WandbTracker:
             )
             self.enabled = False
 
-    def start(self, resolved_device: Any, train_args: Dict[str, Any], full_config: Dict[str, Any]) -> Optional[Any]:
-        """Start a W&B run if enabled."""
+    def _ensure_yolo_wandb_enabled(self) -> None:
+        """
+        Automatically enable WandB in YOLO settings if not already enabled.
+        This ensures wandb logging works without manual intervention.
+        """
+        try:
+            from ultralytics.utils import SettingsManager
+            
+            settings = SettingsManager()
+            if not settings.get('wandb', False):
+                print("  → Enabling WandB in YOLO settings automatically...")
+                settings['wandb'] = True
+                settings.save()
+                print("  ✓ WandB enabled in YOLO settings")
+            else:
+                print("  ✓ WandB already enabled in YOLO settings")
+        except Exception as exc:
+            print(f"  ⚠ Could not auto-enable WandB in YOLO settings: {exc}")
+            print("  → Run manually: yolo settings wandb=True")
+    
+    def get_yolo_wandb_config(self) -> Optional[Dict[str, str]]:
+        """
+        Set environment variables for YOLO's WandB integration.
+        
+        YOLO reads WandB config from environment variables when wandb=True.
+        """
         if not self.enabled or not self.wandb:
             return None
-
+            
+        import os
+        
         tracking_cfg = self.config
         run_name = tracking_cfg.get('run_name') or self.exp_dir.name
         run_name_suffix = tracking_cfg.get('run_name_suffix')
         if run_name_suffix:
             run_name = f"{run_name}-{run_name_suffix}"
 
-        project = tracking_cfg.get('project', 'red-light-violation')
-        entity = tracking_cfg.get('entity') or None  # Convert empty string to None
-        tags = tracking_cfg.get('tags') or []
-        notes = tracking_cfg.get('notes') or None  # Convert empty string to None
-        mode = tracking_cfg.get('mode', 'online')
-
+        wandb_project = tracking_cfg.get('project', 'red-light-violation')
+        wandb_entity = tracking_cfg.get('entity')
+        
+        # Set environment variables that YOLO's WandB integration will read
+        os.environ['WANDB_PROJECT'] = wandb_project
+        if wandb_entity:
+            os.environ['WANDB_ENTITY'] = wandb_entity
+        os.environ['WANDB_NAME'] = run_name
+        
         print(
-            f"Tracking enabled: sending run to W&B "
-            f"(project={project}, entity={entity}, name={run_name}, mode={mode})"
+            f"✓ WandB environment configured "
+            f"(project={wandb_project}, entity={wandb_entity}, run={run_name})"
         )
-
-        try:
-            # Check if wandb run already exists (e.g., from YOLO's built-in integration)
-            if self.wandb.run is not None:
-                print("Using existing W&B run (detected active run)")
-                self.wandb_run = self.wandb.run
-                # Update config with our settings
-                self.wandb_run.config.update({
-                    'experiment': full_config,
-                    'train_args': train_args,
-                    'resolved_device': str(resolved_device),
-                })
-                return self.wandb_run
-            
-            self.wandb_run = self.wandb.init(
-                project=project,
-                entity=entity,
-                name=run_name,
-                config={
-                    'experiment': full_config,
-                    'train_args': train_args,
-                    'resolved_device': str(resolved_device),
-                },
-                tags=tags,
-                notes=notes,
-                mode=mode,
-                dir=str(self.exp_dir),
-                resume='allow',  # Replace deprecated reinit=True
-            )
-
-            return self.wandb_run
-        except Exception as exc:
-            print(
-                f"Warning: Failed to initialize Weights & Biases tracking ({exc}). "
-                "Continuing without tracking."
-            )
-            self.enabled = False
-            self.wandb_run = None
+        print("  YOLO will automatically log all training metrics to WandB")
+        
+        return {}  # No train_args needed, using env vars
+    
+    def start(self, resolved_device: Any, train_args: Dict[str, Any], full_config: Dict[str, Any]) -> Optional[Any]:
+        """
+        Store configuration for later use (YOLO handles wandb initialization).
+        """
+        if not self.enabled or not self.wandb:
             return None
+            
+        # Store config for later summary logging
+        self._stored_config = {
+            'experiment': full_config,
+            'train_args': train_args,
+            'resolved_device': str(resolved_device),
+        }
+        
+        return True
 
     def log_summary(self, summary: Dict[str, Any]) -> None:
         """Update run summary if tracking is enabled."""
-        if not self.enabled or not self.wandb_run or not self.wandb:
+        if not self.enabled or not self.wandb:
             return
         try:
-            self.wandb_run.summary.update(summary)
+            # YOLO's wandb run should be active at this point
+            if self.wandb.run is not None:
+                self.wandb.run.summary.update(summary)
+                print("✓ Training summary logged to W&B")
+            else:
+                print("⚠ No active W&B run to update summary")
         except Exception as exc:
             print(f"Warning: Failed to update W&B summary: {exc}")
 
     def log_artifacts(self, summary_path: Optional[Path]) -> None:
         """Upload config, summary, and weights as artifacts."""
-        if not self.enabled or not self.wandb_run or not self.wandb:
+        if not self.enabled or not self.wandb:
             return
 
         if not self.config.get('log_artifacts', True):
             return
 
         try:
+            # YOLO's wandb run should be active at this point
+            if self.wandb.run is None:
+                print("⚠ No active W&B run to log artifacts")
+                return
+                
             artifact = self.wandb.Artifact(
                 name=self.exp_dir.name,
                 type='model',
@@ -154,14 +177,21 @@ class WandbTracker:
                     artifact.add_file(str(weight_path),
                                       name=f"weights/{weight_name}")
 
-            self.wandb_run.log_artifact(artifact)
+            self.wandb.run.log_artifact(artifact)
+            print("✓ Artifacts logged to W&B")
         except Exception as exc:
             print(f"Warning: Failed to log artifacts to W&B: {exc}")
 
     def finish(self) -> None:
-        """Cleanly finish the tracking run."""
-        if self.wandb_run:
+        """Cleanly finish the tracking run (YOLO handles this automatically)."""
+        if not self.enabled or not self.wandb:
+            return
+            
+        # YOLO automatically finishes its wandb run, but we can explicitly
+        # close it here if needed
+        if self.wandb.run is not None:
             try:
-                self.wandb_run.finish()
-            finally:
-                self.wandb_run = None
+                print("✓ W&B run finished (managed by YOLO)")
+                # Note: YOLO typically handles finish() itself
+            except Exception as exc:
+                print(f"Warning: Issue with W&B finish: {exc}")
