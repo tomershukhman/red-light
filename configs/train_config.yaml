@@ -1,42 +1,50 @@
-# Training Configuration Template
-# Copy and modify this file for your experiments
-# Only specify parameters you want to override from YOLO defaults
+# Training configuration: YOLO11s with targeted augmentations
+# Safe to tweak per experiment; values chosen to help small/rare classes.
 
-experiment_name: my_experiment
-model: yolov8n.pt # yolov8n.pt, yolov8s.pt, yolov8m.pt, yolov8l.pt, yolov8x.pt
+experiment_name: my_experiment_yolo11s_aug
+model: yolo11s.pt
 data_yaml: ../data/data.yaml
 
-# Experiment settings
 experiment:
   output_dir: experiments
 
 # Experiment tracking (optional)
 tracking:
-  enabled: false # Set true to enable logging
-  provider: wandb # Currently supported: wandb
+  enabled: true
+  provider: wandb
   project: red-light-violation
-  entity: your-wandb-entity # Set to your team/user in Weights & Biases
-  tags: ["baseline"]
+  entity: tomer-shukhman-personal
+  tags: ["yolo11s", "aug"]
   notes: ""
-  mode: online # online | offline (use offline on air-gapped GPU boxes)
-  log_artifacts: true # Upload best/last weights and config
+  mode: online
+  log_artifacts: true
 
-# Training parameters
 training:
-  epochs: 100
-  batch_size: 16 # Adjust based on GPU memory
-  imgsz: 640
-  device: auto # auto picks CUDA->MPS->CPU
+  epochs: 10
+  batch_size: 8 # lowered to fit T4 memory
+  imgsz: 640 # reduced resolution to avoid OOM on T4
+  device: auto # auto: CUDA -> MPS -> CPU
   seed: 42
-# Augmentation (optional - uncomment and modify as needed)
-# augmentation:
-#   hsv_h: 0.02      # Hue variation (good for traffic lights)
-#   hsv_s: 0.8       # Saturation variation
-#   degrees: 5.0     # Rotation
-#   mixup: 0.1       # Helps with rare classes
-#   copy_paste: 0.1  # Helps with class imbalance
+  # Uncomment to limit training time if needed
+  # patience: 15
 
-# Hyperparameters (optional - uncomment and modify as needed)
+augmentation:
+  hsv_h: 0.02 # hue jitter helps traffic lights
+  hsv_s: 0.8
+  hsv_v: 0.8
+  degrees: 5.0
+  scale: 0.5
+  translate: 0.1
+  shear: 0.0
+  perspective: 0.0
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 1.0
+  mixup: 0.15 # minority classes
+  copy_paste: 0.15 # minority/small objects
+
+# Optional hyperparameters (kept default unless overridden)
 # hyperparameters:
-#   lr0: 0.01        # Initial learning rate
-#   optimizer: AdamW # Optimizer choice
+#   lr0: 0.01
+#   optimizer: SGD
+

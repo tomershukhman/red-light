@@ -1,8 +1,7 @@
 """
 Training pipeline utilities for Red Light Violation Detection.
 
-Expose `RedLightDetectionTrainer` for programmatic use; CLI wrappers should
-stay thin and delegate here.
+Simple wrapper around YOLO training with WandB integration.
 """
 
 from pathlib import Path
@@ -12,8 +11,7 @@ from ultralytics import YOLO
 import torch
 
 from red_light.config import load_training_config
-from red_light.experiment import ExperimentManager
-from red_light.tracking import WandbTracker
+from red_light.tracking import setup_wandb
 
 
 class RedLightDetectionTrainer:
@@ -28,46 +26,41 @@ class RedLightDetectionTrainer:
         """
         self.config_path = Path(config_path)
         self.config = load_training_config(self.config_path)
-        self.experiment = ExperimentManager(self.config, self.config_path)
-        self.exp_dir = self.experiment.setup_experiment()
-        self.tracker = WandbTracker(
-            self.config.get('tracking', {}), self.exp_dir)
+
+        # Setup project directory (YOLO will create runs/detect/train{N} inside)
+        exp_config = self.config.get('experiment', {})
+        self.project_dir = Path(exp_config.get('output_dir', 'runs'))
+        self.project_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"Project directory: {self.project_dir}")
+        print(
+            f"YOLO will create training runs inside: {self.project_dir}/detect/train*")
 
     def train(self):
-        """Train the YOLO model."""
+        """Train the YOLO model with YOLO's built-in WandB integration."""
         print("\n" + "=" * 60)
         print("Starting Training")
         print("=" * 60)
 
         resolved_device = self._resolve_device(
             self.config.get('training', {}).get('device'))
-        self.resolved_device = resolved_device
 
         self._print_config_summary(resolved_device)
 
         model_name = self.config['model']
         print(f"\nLoading model: {model_name}")
 
-        if not Path(model_name).exists() and not model_name.startswith('yolov8'):
+        # Check if model exists locally or is an official YOLO model (will be auto-downloaded)
+        if not Path(model_name).exists() and not model_name.startswith('yolo'):
             raise FileNotFoundError(f"Model file not found: {model_name}")
 
         model = YOLO(model_name)
 
-        # YOLO has built-in wandb integration that automatically detects
-        # an active wandb run and logs comprehensive metrics including:
-        # - Per-batch training losses
-        # - Training/validation images with predictions
-        # - Confusion matrices, PR curves, F1 curves
-        # - Model architecture, hyperparameters
-        # No custom callback needed - YOLO handles it all!
-
+        # Build training arguments from config
         train_args = self._build_training_args(resolved_device)
-        
-        # Configure WandB tracking (sets environment variables for YOLO's integration)
-        if self.tracker.enabled:
-            self.tracker.get_yolo_wandb_config()
-        
-        self.tracker.start(resolved_device, train_args, self.config)
+
+        # Load .env and set WandB env vars (YOLO auto-logs when wandb=True in settings)
+        setup_wandb(self.config)
 
         print("\nTraining arguments:")
         print(json.dumps({k: str(v) for k, v in train_args.items()}, indent=2))
@@ -76,21 +69,15 @@ class RedLightDetectionTrainer:
         print("Training started...")
         print("=" * 60 + "\n")
 
-        try:
-            results = model.train(**train_args)
+        # YOLO handles everything: training, validation, logging, saving weights
+        results = model.train(**train_args)
 
-            print("\n" + "=" * 60)
-            print("Training completed!")
-            print("=" * 60)
+        print("\n" + "=" * 60)
+        print("Training completed!")
+        print("=" * 60)
+        print(f"Results saved in: {results.save_dir}")
 
-            summary, summary_path = self.experiment.save_training_summary(
-                train_args)
-            self.tracker.log_summary(summary)
-            self.tracker.log_artifacts(summary_path)
-
-            return results, model
-        finally:
-            self.tracker.finish()
+        return results, model
 
     def _build_training_args(self, resolved_device):
         """Build training arguments from config - no hardcoded defaults."""
@@ -103,8 +90,8 @@ class RedLightDetectionTrainer:
             'batch': train_config.get('batch_size'),
             'device': resolved_device,
             'workers': train_config.get('workers'),
-            'project': str(self.exp_dir / 'runs'),
-            'name': 'train',
+            'project': str(self.project_dir),
+            'name': self.config['experiment_name'],
             'exist_ok': True,
             'pretrained': train_config.get('pretrained'),
             'optimizer': train_config.get('optimizer'),

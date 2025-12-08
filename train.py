@@ -42,17 +42,15 @@ All training parameters are specified in the config YAML file.
         # Create trainer
         trainer = RedLightDetectionTrainer(args.config)
 
-        # Train model
-        trainer.train()
+        # Train model (returns results object and model)
+        results, model = trainer.train()
 
         print("\n" + "="*60)
         print("Training pipeline completed successfully!")
         print("="*60)
-        print(f"\nExperiment directory: {trainer.exp_dir}")
-        print(
-            f"Best model: {trainer.exp_dir / 'runs' / 'train' / 'weights' / 'best.pt'}")
-        print(
-            f"Last model: {trainer.exp_dir / 'runs' / 'train' / 'weights' / 'last.pt'}")
+        print(f"\nResults directory: {results.save_dir}")
+        print(f"Best model: {results.save_dir / 'weights' / 'best.pt'}")
+        print(f"Last model: {results.save_dir / 'weights' / 'last.pt'}")
 
         return 0
 
