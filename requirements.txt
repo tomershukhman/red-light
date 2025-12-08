@@ -14,6 +14,6 @@ torchvision
 tqdm
 tensorboard
 
-# Optional: Experiment tracking (uncomment if needed)
-# mlflow
-# wandb
+# Experiment tracking
+# Leave installed so GPU boxes can log experiments automatically.
+wandb

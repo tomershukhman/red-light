@@ -8,6 +8,17 @@ data_yaml: ../data/data.yaml
 experiment:
   output_dir: experiments
 
+# Experiment tracking (optional)
+tracking:
+  enabled: false
+  provider: wandb
+  project: red-light-violation
+  entity: your-wandb-entity
+  tags: ["yolov8s", "aug"]
+  notes: ""
+  mode: online
+  log_artifacts: true
+
 training:
   epochs: 100
   batch_size: 16

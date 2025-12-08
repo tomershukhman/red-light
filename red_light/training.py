@@ -5,15 +5,15 @@ Expose `RedLightDetectionTrainer` for programmatic use; CLI wrappers should
 stay thin and delegate here.
 """
 
-from datetime import datetime
 from pathlib import Path
 import json
-import shutil
 
 from ultralytics import YOLO
 import torch
 
 from red_light.config import load_training_config
+from red_light.experiment import ExperimentManager
+from red_light.tracking import WandbTracker
 
 
 class RedLightDetectionTrainer:
@@ -28,24 +28,10 @@ class RedLightDetectionTrainer:
         """
         self.config_path = Path(config_path)
         self.config = load_training_config(self.config_path)
-        self.setup_experiment()
-
-    def setup_experiment(self):
-        """Setup experiment directory and logging."""
-        exp_settings = self.config.get('experiment', {})
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        exp_name = self.config['experiment_name']
-
-        exp_base_dir = Path(exp_settings.get('output_dir', 'experiments'))
-        self.exp_dir = exp_base_dir / f"{exp_name}_{timestamp}"
-        self.exp_dir.mkdir(parents=True, exist_ok=True)
-
-        config_save_path = self.exp_dir / 'config.yaml'
-        shutil.copy(self.config_path, config_save_path)
-
-        print(f"Experiment directory: {self.exp_dir}")
-        print(f"Configuration saved to: {config_save_path}")
+        self.experiment = ExperimentManager(self.config, self.config_path)
+        self.exp_dir = self.experiment.setup_experiment()
+        self.tracker = WandbTracker(
+            self.config.get('tracking', {}), self.exp_dir)
 
     def train(self):
         """Train the YOLO model."""
@@ -68,6 +54,7 @@ class RedLightDetectionTrainer:
         model = YOLO(model_name)
 
         train_args = self._build_training_args(resolved_device)
+        self.tracker.start(resolved_device, train_args, self.config)
 
         print("\nTraining arguments:")
         print(json.dumps({k: str(v) for k, v in train_args.items()}, indent=2))
@@ -76,15 +63,21 @@ class RedLightDetectionTrainer:
         print("Training started...")
         print("=" * 60 + "\n")
 
-        results = model.train(**train_args)
+        try:
+            results = model.train(**train_args)
 
-        print("\n" + "=" * 60)
-        print("Training completed!")
-        print("=" * 60)
+            print("\n" + "=" * 60)
+            print("Training completed!")
+            print("=" * 60)
 
-        self._save_training_summary(results, train_args)
+            summary, summary_path = self.experiment.save_training_summary(
+                train_args)
+            self.tracker.log_summary(summary)
+            self.tracker.log_artifacts(summary_path)
 
-        return results, model
+            return results, model
+        finally:
+            self.tracker.finish()
 
     def _build_training_args(self, resolved_device):
         """Build training arguments from config - no hardcoded defaults."""
@@ -213,27 +206,3 @@ class RedLightDetectionTrainer:
             print("GPU Available: No (training on CPU)")
 
         print("-" * 60)
-
-    def _save_training_summary(self, results, train_args):
-        """Save training summary and metadata."""
-        summary = {
-            'experiment_name': self.config['experiment_name'],
-            'timestamp': datetime.now().isoformat(),
-            'config': self.config,
-            'train_args': {k: str(v) for k, v in train_args.items()},
-            'system_info': {
-                'cuda_available': torch.cuda.is_available(),
-                'cuda_version': torch.version.cuda if torch.cuda.is_available() else None,
-                'gpu_count': torch.cuda.device_count() if torch.cuda.is_available() else 0,
-                'gpu_names': [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
-                if torch.cuda.is_available() else [],
-            }
-        }
-
-        summary_path = self.exp_dir / 'training_summary.json'
-        with open(summary_path, 'w') as f:
-            json.dump(summary, f, indent=2)
-
-        print(f"\nTraining summary saved to: {summary_path}")
-        print(
-            f"Model weights saved in: {self.exp_dir / 'runs' / 'train' / 'weights'}")

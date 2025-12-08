@@ -3,21 +3,31 @@
 # Only specify parameters you want to override from YOLO defaults
 
 experiment_name: my_experiment
-model: yolov8n.pt  # yolov8n.pt, yolov8s.pt, yolov8m.pt, yolov8l.pt, yolov8x.pt
+model: yolov8n.pt # yolov8n.pt, yolov8s.pt, yolov8m.pt, yolov8l.pt, yolov8x.pt
 data_yaml: ../data/data.yaml
 
 # Experiment settings
 experiment:
   output_dir: experiments
 
+# Experiment tracking (optional)
+tracking:
+  enabled: false # Set true to enable logging
+  provider: wandb # Currently supported: wandb
+  project: red-light-violation
+  entity: your-wandb-entity # Set to your team/user in Weights & Biases
+  tags: ["baseline"]
+  notes: ""
+  mode: online # online | offline (use offline on air-gapped GPU boxes)
+  log_artifacts: true # Upload best/last weights and config
+
 # Training parameters
 training:
   epochs: 100
-  batch_size: 16  # Adjust based on GPU memory
+  batch_size: 16 # Adjust based on GPU memory
   imgsz: 640
-  device: auto  # auto picks CUDA->MPS->CPU
+  device: auto # auto picks CUDA->MPS->CPU
   seed: 42
-
 # Augmentation (optional - uncomment and modify as needed)
 # augmentation:
 #   hsv_h: 0.02      # Hue variation (good for traffic lights)

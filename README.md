@@ -125,6 +125,15 @@ experiments/baseline_yolov8n_20231208_143022/
 └── training_summary.json        # Training metadata
 ```
 
+### Optional: Remote Experiment Tracking (Weights & Biases)
+
+Enable centralized tracking when running on a GPU box:
+- Set `tracking.enabled: true` in your training config (see `configs/train_config.yaml` or `configs/train_yolov8s_aug.yaml`).
+- Fill in `tracking.project` and `tracking.entity` to match your W&B workspace.
+- Export `WANDB_API_KEY=...` (and optionally `WANDB_MODE=offline` for air-gapped machines).
+- Run `pip install -r requirements.txt` to ensure `wandb` is available on the GPU host.
+- Start training as usual; metrics, configs, and best/last weights will be pushed to W&B.
+
 ### 4. Evaluate Model
 
 ```bash
