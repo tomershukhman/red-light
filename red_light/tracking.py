@@ -13,9 +13,15 @@ class WandbTracker:
 
     def __init__(self, tracking_config: Dict[str, Any], exp_dir: Path):
         # Load environment variables (e.g., WANDB_API_KEY) from project-level .env
+        # Path(__file__).resolve().parents[1] goes from red_light/tracking.py -> red-light/
         project_root = Path(__file__).resolve().parents[1]
         env_path = project_root / ".env"
-        load_dotenv(env_path)
+        # Only try to load if .env exists (wandb can also use system env vars)
+        if env_path.exists():
+            load_dotenv(env_path)
+        else:
+            # Silently use system environment variables if .env doesn't exist
+            load_dotenv()  # This will search in parent directories
 
         self.config = tracking_config or {}
         self.exp_dir = Path(exp_dir)
@@ -60,9 +66,9 @@ class WandbTracker:
             run_name = f"{run_name}-{run_name_suffix}"
 
         project = tracking_cfg.get('project', 'red-light-violation')
-        entity = tracking_cfg.get('entity')
+        entity = tracking_cfg.get('entity') or None  # Convert empty string to None
         tags = tracking_cfg.get('tags') or []
-        notes = tracking_cfg.get('notes')
+        notes = tracking_cfg.get('notes') or None  # Convert empty string to None
         mode = tracking_cfg.get('mode', 'online')
 
         print(
@@ -71,6 +77,18 @@ class WandbTracker:
         )
 
         try:
+            # Check if wandb run already exists (e.g., from YOLO's built-in integration)
+            if self.wandb.run is not None:
+                print("Using existing W&B run (detected active run)")
+                self.wandb_run = self.wandb.run
+                # Update config with our settings
+                self.wandb_run.config.update({
+                    'experiment': full_config,
+                    'train_args': train_args,
+                    'resolved_device': str(resolved_device),
+                })
+                return self.wandb_run
+            
             self.wandb_run = self.wandb.init(
                 project=project,
                 entity=entity,
@@ -84,7 +102,7 @@ class WandbTracker:
                 notes=notes,
                 mode=mode,
                 dir=str(self.exp_dir),
-                reinit=True,
+                resume='allow',  # Replace deprecated reinit=True
             )
 
             return self.wandb_run
