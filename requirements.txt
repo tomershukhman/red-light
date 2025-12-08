@@ -13,6 +13,7 @@ torch
 torchvision
 tqdm
 tensorboard
+python-dotenv
 
 # Experiment tracking
 # Leave installed so GPU boxes can log experiments automatically.

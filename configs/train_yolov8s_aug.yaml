@@ -10,10 +10,10 @@ experiment:
 
 # Experiment tracking (optional)
 tracking:
-  enabled: false
+  enabled: true
   provider: wandb
   project: red-light-violation
-  entity: your-wandb-entity
+  entity: tomer-shukhman-personal
   tags: ["yolov8s", "aug"]
   notes: ""
   mode: online
@@ -21,8 +21,8 @@ tracking:
 
 training:
   epochs: 100
-  batch_size: 16
-  imgsz: 960 # boost resolution for small lights/stop lines
+  batch_size: 8        # lowered to fit T4 memory
+  imgsz: 640           # reduced resolution to avoid OOM on T4
   device: auto # auto: CUDA -> MPS -> CPU
   seed: 42
   # Uncomment to limit training time if needed

@@ -5,11 +5,18 @@ Experiment tracking backends.
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from dotenv import load_dotenv
+
 
 class WandbTracker:
     """Thin wrapper around Weights & Biases logging."""
 
     def __init__(self, tracking_config: Dict[str, Any], exp_dir: Path):
+        # Load environment variables (e.g., WANDB_API_KEY) from project-level .env
+        project_root = Path(__file__).resolve().parents[1]
+        env_path = project_root / ".env"
+        load_dotenv(env_path)
+
         self.config = tracking_config or {}
         self.exp_dir = Path(exp_dir)
         self.enabled = bool(self.config.get('enabled', False))
@@ -57,6 +64,11 @@ class WandbTracker:
         tags = tracking_cfg.get('tags') or []
         notes = tracking_cfg.get('notes')
         mode = tracking_cfg.get('mode', 'online')
+
+        print(
+            f"Tracking enabled: sending run to W&B "
+            f"(project={project}, entity={entity}, name={run_name}, mode={mode})"
+        )
 
         try:
             self.wandb_run = self.wandb.init(
