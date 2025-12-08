@@ -7,6 +7,12 @@ Thin CLI wrapper that delegates training to the package code.
 import argparse
 import sys
 
+from dotenv import load_dotenv
+
+# Load environment variables early so settings like PYTORCH_CUDA_ALLOC_CONF
+# take effect before torch/ultralytics initialize.
+load_dotenv()
+
 from red_light.config import ConfigError
 from red_light.training import RedLightDetectionTrainer
 

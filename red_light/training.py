@@ -53,6 +53,20 @@ class RedLightDetectionTrainer:
 
         model = YOLO(model_name)
 
+        # If tracking is enabled, attach the official W&B callback so all
+        # Ultralytics metrics/artifacts stream to W&B reliably.
+        if self.tracker.enabled and self.tracker.wandb:
+            try:
+                from wandb.integration.ultralytics import add_wandb_callback
+
+                add_wandb_callback(model, enable_model_checkpointing=True)
+                print("W&B callback attached to YOLO model.")
+            except Exception as exc:
+                print(
+                    f"Warning: Failed to attach W&B Ultralytics callback ({exc}). "
+                    "Continuing without callback."
+                )
+
         train_args = self._build_training_args(resolved_device)
         self.tracker.start(resolved_device, train_args, self.config)
 

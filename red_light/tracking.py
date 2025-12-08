@@ -86,6 +86,7 @@ class WandbTracker:
                 dir=str(self.exp_dir),
                 reinit=True,
             )
+
             return self.wandb_run
         except Exception as exc:
             print(
