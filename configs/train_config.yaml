@@ -4,6 +4,8 @@
 experiment_name: my_experiment_yolo11s_aug
 model: yolo11s.pt
 data_yaml: ../data/data.yaml
+# To resume from a previous checkpoint, uncomment and set path (relative to project root):
+resume_from: experiments/my_experiment_yolo11s_aug/weights/best.pt
 
 experiment:
   output_dir: experiments
@@ -20,13 +22,14 @@ tracking:
   log_artifacts: true
 
 training:
-  epochs: 10
-  batch_size: 8 # lowered to fit T4 memory
-  imgsz: 640 # reduced resolution to avoid OOM on T4
-  device: auto # auto: CUDA -> MPS -> CPU
+  epochs: 100
+  batch_size: 32  # optimized for T4 16GB (32 is max but 24 is safer)
+  imgsz: 640
+  device: auto
   seed: 42
-  # Uncomment to limit training time if needed
-  # patience: 15
+  patience: 15
+  workers: 8      # parallel data loading for faster training
+  amp: true       # mixed precision training (faster + less memory)
 
 augmentation:
   hsv_h: 0.02 # hue jitter helps traffic lights

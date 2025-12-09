@@ -137,6 +137,24 @@ def load_training_config(
             resolved_model = _resolve_path(config["model"], base_dir)
             config["model"] = str(resolved_model)
 
+    # Resolve resume_from path if specified
+    # Note: resume_from paths should be relative to project root, not config dir
+    if "resume_from" in config and config["resume_from"]:
+        resume_path = Path(config["resume_from"])
+        if not resume_path.is_absolute():
+            # If path starts with '../', resolve relative to config dir
+            # Otherwise, assume it's relative to project root
+            if config["resume_from"].startswith('../'):
+                resolved_resume = _resolve_path(config["resume_from"], base_dir)
+            else:
+                # Resolve relative to project root (current working directory)
+                resolved_resume = Path.cwd() / resume_path
+        else:
+            resolved_resume = resume_path
+        
+        _validate_file_exists(resolved_resume, "Resume checkpoint")
+        config["resume_from"] = str(resolved_resume)
+
     return config
 
 
