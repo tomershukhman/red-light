@@ -3,17 +3,17 @@ WandB setup for YOLO training.
 See: https://docs.ultralytics.com/integrations/weights-biases/
 """
 
-import os
 from pathlib import Path
 from dotenv import load_dotenv
 
 
 def setup_wandb(config: dict) -> None:
     """
-    Enable wandb in YOLO settings and set project/entity from config.
+    Initialize wandb with correct project/entity before YOLO training.
 
-    According to docs, YOLO uses 'project' and 'name' train args for wandb.
-    We set WANDB_PROJECT env var to override with tracking.project from config.
+    YOLO's wandb callback ignores WANDB_PROJECT env var and uses the 'project'
+    argument from train(). To override this, we call wandb.init() directly.
+    YOLO's callback will detect the existing run and use it.
     """
     # Load .env for WANDB_API_KEY
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
@@ -26,8 +26,14 @@ def setup_wandb(config: dict) -> None:
     from ultralytics import settings
     settings.update({'wandb': True})
 
-    # Set wandb project from config (overrides train's 'project' arg for wandb)
-    if project := tracking.get('project'):
-        os.environ['WANDB_PROJECT'] = project
-    if entity := tracking.get('entity'):
-        os.environ['WANDB_ENTITY'] = entity
+    # Initialize wandb directly - YOLO will use this existing run
+    import wandb
+    
+    wandb.init(
+        project=tracking.get('project'),
+        entity=tracking.get('entity'),
+        name=config.get('experiment_name'),
+        tags=tracking.get('tags'),
+        notes=tracking.get('notes'),
+        mode=tracking.get('mode', 'online'),
+    )

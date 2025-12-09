@@ -47,6 +47,9 @@ class RedLightDetectionTrainer:
 
         self._print_config_summary(resolved_device)
 
+        # Setup wandb BEFORE loading YOLO model (env vars must be set early)
+        setup_wandb(self.config)
+
         model_name = self.config['model']
         print(f"\nLoading model: {model_name}")
 
@@ -58,9 +61,6 @@ class RedLightDetectionTrainer:
 
         # Build training arguments from config
         train_args = self._build_training_args(resolved_device)
-
-        # Load .env and set WandB env vars (YOLO auto-logs when wandb=True in settings)
-        setup_wandb(self.config)
 
         print("\nTraining arguments:")
         print(json.dumps({k: str(v) for k, v in train_args.items()}, indent=2))
